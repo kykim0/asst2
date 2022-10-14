@@ -26,14 +26,17 @@ class TaskSystemSerial: public ITaskSystem {
  * of the ITaskSystem interface.
  */
 class TaskSystemParallelSpawn: public ITaskSystem {
-    public:
-        TaskSystemParallelSpawn(int num_threads);
-        ~TaskSystemParallelSpawn();
-        const char* name();
-        void run(IRunnable* runnable, int num_total_tasks);
-        TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
-                                const std::vector<TaskID>& deps);
-        void sync();
+ public:
+  TaskSystemParallelSpawn(int num_threads);
+  ~TaskSystemParallelSpawn();
+  const char* name();
+  void run(IRunnable* runnable, int num_total_tasks);
+  TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
+                          const std::vector<TaskID>& deps);
+  void sync();
+
+ private:
+  const int num_threads_;
 };
 
 /*

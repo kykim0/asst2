@@ -1,3 +1,6 @@
+#include <atomic>
+#include <thread>
+
 #include "tasksys.h"
 
 
@@ -46,7 +49,8 @@ const char* TaskSystemParallelSpawn::name() {
     return "Parallel + Always Spawn";
 }
 
-TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(num_threads) {
+TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads)
+  : ITaskSystem(num_threads), num_threads_(num_threads) {
     //
     // TODO: CS149 student implementations may decide to perform setup
     // operations (such as thread pool construction) here.
@@ -57,18 +61,34 @@ TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(n
 
 TaskSystemParallelSpawn::~TaskSystemParallelSpawn() {}
 
+void runTaskThread(const int num_total_tasks, std::atomic<int>& task_id,
+                   IRunnable* runnable) {
+  while (true) {
+    const int curr_task_id = task_id++;
+    if (curr_task_id >= num_total_tasks) return;
+    runnable->runTask(curr_task_id, num_total_tasks);
+  }
+}
+
 void TaskSystemParallelSpawn::run(IRunnable* runnable, int num_total_tasks) {
 
 
-    //
-    // TODO: CS149 students will modify the implementation of this
-    // method in Part A.  The implementation provided below runs all
-    // tasks sequentially on the calling thread.
-    //
+  //
+  // TODO: CS149 students will modify the implementation of this
+  // method in Part A.  The implementation provided below runs all
+  // tasks sequentially on the calling thread.
+  //
+  std::atomic<int> task_id{0};
+  std::thread* threads = new std::thread[num_threads_];
+  for (int i = 0; i < num_threads_; ++i) {
+    threads[i] = std::thread(runTaskThread, num_total_tasks, std::ref(task_id),
+                             runnable);
+  }
+  for (int i = 0; i < num_threads_; ++i) {
+    threads[i].join();
+  }
 
-    for (int i = 0; i < num_total_tasks; i++) {
-        runnable->runTask(i, num_total_tasks);
-    }
+  delete[] threads;
 }
 
 TaskID TaskSystemParallelSpawn::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
