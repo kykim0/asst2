@@ -64,12 +64,11 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
  private:
   const int num_threads_;
   std::mutex state_lock_;
-  std::mutex cv_lock_;
-  std::condition_variable cv_;
   std::thread* threads_;
   bool done_;
   int curr_task_id_;
-  int num_total_done_;
+  // An atomic is better than an int with the state lock for this purpose.
+  std::atomic<int> num_total_done_;
   int num_total_tasks_;
   IRunnable* curr_runnable_;
 };

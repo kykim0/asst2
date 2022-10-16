@@ -114,10 +114,8 @@ const char* TaskSystemParallelThreadPoolSpinning::name() {
 void runTaskThreadSpin(const bool& done,
                        const int& num_total_tasks,
                        int& task_id,
-                       int& num_total_done,
+                       std::atomic<int>& num_total_done,
                        std::mutex& state_lock,
-                       std::mutex& cv_lock,
-                       std::condition_variable& cv,
                        IRunnable** runnable) {
   while (!done) {
     state_lock.lock();
@@ -128,14 +126,7 @@ void runTaskThreadSpin(const bool& done,
 
       IRunnable* curr_runnable = *runnable;
       curr_runnable->runTask(curr_task_id, num_total_tasks);
-      state_lock.lock();
-      const bool is_complete = (++num_total_done >= num_total_tasks);
-      state_lock.unlock();
-      if (is_complete) {
-        cv_lock.lock();
-        cv_lock.unlock();
-        cv.notify_all();
-      }
+      ++num_total_done;
     } else {
       state_lock.unlock();
     }
@@ -144,8 +135,8 @@ void runTaskThreadSpin(const bool& done,
 
 TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int num_threads)
   : ITaskSystem(num_threads), num_threads_(num_threads), state_lock_(),
-    cv_lock_(), cv_(), threads_(nullptr), done_(false), curr_task_id_(0),
-    num_total_done_(0), num_total_tasks_(0), curr_runnable_(nullptr) {
+    threads_(nullptr), done_(false), curr_task_id_(0), num_total_done_(0),
+    num_total_tasks_(0), curr_runnable_(nullptr) {
   //
   // TODO: CS149 student implementations may decide to perform setup
   // operations (such as thread pool construction) here.
@@ -160,8 +151,6 @@ TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int n
                               std::ref(curr_task_id_),
                               std::ref(num_total_done_),
                               std::ref(state_lock_),
-                              std::ref(cv_lock_),
-                              std::ref(cv_),
                               &curr_runnable_);
   }
 }
@@ -180,8 +169,6 @@ void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int num_tota
   // method in Part A.  The implementation provided below runs all
   // tasks sequentially on the calling thread.
   //
-  // Grab the cv lock first.
-  std::unique_lock<std::mutex> cv_lk(cv_lock_);
 
   // Initialize the state atomically.
   state_lock_.lock();
@@ -191,10 +178,10 @@ void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int num_tota
   curr_runnable_ = runnable;
   state_lock_.unlock();
 
-  // Wait until the task is complete.
-  cv_.wait(cv_lk);
-  cv_lk.unlock();
-  // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  while (true) {
+    const bool is_complete = (num_total_done_ >= num_total_tasks_);
+    if (is_complete) { break; }
+  }
 }
 
 TaskID TaskSystemParallelThreadPoolSpinning::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
