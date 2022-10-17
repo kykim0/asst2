@@ -13,7 +13,7 @@
  * serial task execution engine.  See definition of ITaskSystem in
  * itasksys.h for documentation of the ITaskSystem interface.
  */
-class TaskSystemSerial: public ITaskSystem {
+class TaskSystemSerial : public ITaskSystem {
  public:
   TaskSystemSerial(int num_threads);
   ~TaskSystemSerial();
@@ -30,7 +30,7 @@ class TaskSystemSerial: public ITaskSystem {
  * call.  See definition of ITaskSystem in itasksys.h for documentation
  * of the ITaskSystem interface.
  */
-class TaskSystemParallelSpawn: public ITaskSystem {
+class TaskSystemParallelSpawn : public ITaskSystem {
  public:
   TaskSystemParallelSpawn(int num_threads);
   ~TaskSystemParallelSpawn();
@@ -51,7 +51,7 @@ class TaskSystemParallelSpawn: public ITaskSystem {
  * thread pool. See definition of ITaskSystem in itasksys.h for
  * documentation of the ITaskSystem interface.
  */
-class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
+class TaskSystemParallelThreadPoolSpinning : public ITaskSystem {
  public:
   TaskSystemParallelThreadPoolSpinning(int num_threads);
   ~TaskSystemParallelThreadPoolSpinning();
@@ -79,7 +79,7 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
  * a thread pool. See definition of ITaskSystem in
  * itasksys.h for documentation of the ITaskSystem interface.
  */
-class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
+class TaskSystemParallelThreadPoolSleeping : public ITaskSystem {
  public:
   TaskSystemParallelThreadPoolSleeping(int num_threads);
   ~TaskSystemParallelThreadPoolSleeping();
@@ -91,6 +91,18 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
 
  private:
   const int num_threads_;
+  std::mutex state_lock_;
+  std::mutex cv_lock_;
+  std::condition_variable cv_;
+  std::mutex work_cv_lock_;
+  std::condition_variable work_cv_;
+  std::thread* threads_;
+  bool done_;
+  int curr_task_id_;
+  std::atomic<int> num_total_done_;
+  int num_total_tasks_;
+  IRunnable* curr_runnable_;
+  std::atomic<int> num_threads_exited_;
 };
 
 #endif
